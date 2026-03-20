@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ShopEase - Smart Cart with Live Location & Payments</title>
+    <!-- Leaflet CSS & JS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-store"></i> ShopEase
+            </div>
+            <div class="cart-icon" id="cartIcon">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count" id="cartCount">0</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-grid">
+            <!-- Left Column: Products -->
+            <div class="products-section">
+                <h2><i class="fas fa-tag"></i> Featured Items</h2>
+                <div class="products-grid" id="productsGrid"></div>
+            </div>
+
+            <!-- Right Column: Cart & Delivery -->
+            <div>
+                <!-- Cart Section -->
+                <div class="cart-section" id="cartSection">
+                    <h2><i class="fas fa-shopping-bag"></i> Your Cart</h2>
+                    <div id="cartItems" class="cart-items">
+                        <div class="empty-cart">Your cart is empty</div>
+                    </div>
+                    <div class="cart-total" id="cartTotal">Total: ₹0.00</div>
+                    <button class="checkout-btn" id="checkoutBtn" disabled>Proceed to Checkout</button>
+                </div>
+
+                <!-- Delivery & Order Section (Hidden until checkout) -->
+                <div class="delivery-section hidden" id="deliverySection">
+                    <h2><i class="fas fa-truck"></i> Delivery Details</h2>
+                    
+                    <!-- Location Input Methods -->
+                    <div class="location-methods">
+                        <button class="location-method-btn active" data-method="auto">
+                            <i class="fas fa-location-dot"></i> Auto Detect
+                        </button>
+                        <button class="location-method-btn" data-method="manual">
+                            <i class="fas fa-keyboard"></i> Manual Address
+                        </button>
+                        <button class="location-method-btn" data-method="map">
+                            <i class="fas fa-map-pin"></i> Select on Map
+                        </button>
+                    </div>
+
+                    <!-- Auto Detect Section -->
+                    <div id="autoLocation" class="location-panel active">
+                        <div class="location-status" id="locationStatus">
+                            <i class="fas fa-spinner fa-spin"></i> Detecting your location...
+                        </div>
+                        <div class="location-result" id="autoLocationResult"></div>
+                        <button class="btn-secondary" id="refreshLocationBtn">
+                            <i class="fas fa-sync-alt"></i> Refresh Location
+                        </button>
+                    </div>
+
+                    <!-- Manual Address Section -->
+                    <div id="manualLocation" class="location-panel hidden">
+                        <input type="text" id="manualAddress" class="address-input" 
+                               placeholder="Street Address, City, PIN Code" value="MG Road, Bengaluru, 560001">
+                        <input type="text" id="manualLandmark" class="address-input" 
+                               placeholder="Landmark (Optional)">
+                        <button class="btn-secondary" id="saveManualBtn">Save Address</button>
+                    </div>
+
+                    <!-- Map Selection Section -->
+                    <div id="mapLocation" class="location-panel hidden">
+                        <div id="map" style="height: 250px; border-radius: 16px; margin-bottom: 12px;"></div>
+                        <div class="selected-coords" id="selectedCoords">Click on map to select delivery point</div>
+                        <button class="btn-secondary" id="confirmMapBtn">Confirm Map Location</button>
+                    </div>
+
+                    <!-- Delivery Summary -->
+                    <div class="delivery-summary" id="deliverySummary">
+                        <h3>Delivery Address</h3>
+                        <div id="displayAddress">Not set</div>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="payment-method">
+                        <h3><i class="fas fa-credit-card"></i> Payment Method</h3>
+                        <select id="paymentMethod" class="payment-select">
+                            <option value="card">💳 Credit/Debit Card</option>
+                            <option value="upi">📱 UPI (Google Pay, PhonePe)</option>
+                            <option value="cod">💵 Cash on Delivery</option>
+                        </select>
+                    </div>
+
+                    <!-- Order Button -->
+                    <button class="place-order-btn" id="placeOrderBtn">
+                        <i class="fas fa-check-circle"></i> Place Order
+                    </button>
+
+                    <!-- Order Status Updates -->
+                    <div class="order-updates" id="orderUpdates">
+                        <h3><i class="fas fa-clock"></i> Order Status</h3>
+                        <div id="orderStatusMsg">Waiting for order placement...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="products.js"></script>
+    <script src="script.js"></script>
+    <script src="payment.js"></script>
+</body>
+</html>
