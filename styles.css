@@ -602,3 +602,202 @@ body {
     font-size: 1.1rem;
     font-weight: 600;
 }
+
+/* VPN Warning Modal Styles */
+.vpn-warning-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.3s ease;
+}
+
+.vpn-warning-modal.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.vpn-warning-content {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 32px;
+    max-width: 500px;
+    width: 90%;
+    padding: 32px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.vpn-warning-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+}
+
+.vpn-warning-icon i {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 20px;
+    border-radius: 50%;
+}
+
+.vpn-warning-content h2 {
+    font-size: 1.8rem;
+    margin-bottom: 16px;
+    font-weight: 700;
+}
+
+.vpn-warning-content p {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    opacity: 0.95;
+}
+
+.vpn-warning-reasons {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.vpn-warning-reasons h3 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.vpn-warning-reasons ul {
+    list-style: none;
+    padding: 0;
+}
+
+.vpn-warning-reasons li {
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.vpn-warning-reasons li i {
+    width: 24px;
+    font-size: 1rem;
+}
+
+.vpn-warning-buttons {
+    display: flex;
+    gap: 12px;
+    margin: 24px 0;
+}
+
+.vpn-retry-btn, .vpn-cancel-btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 40px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.vpn-retry-btn {
+    background: white;
+    color: #667eea;
+}
+
+.vpn-retry-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.vpn-cancel-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.vpn-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.vpn-instructions {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 16px;
+    padding: 16px;
+    margin-top: 16px;
+    font-size: 0.85rem;
+    text-align: left;
+}
+
+.vpn-instructions p {
+    margin: 8px 0;
+    font-size: 0.85rem;
+}
+
+.vpn-instructions p:first-child {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+/* Security badge in location panel */
+.security-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #10b981;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 40px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.security-badge.warning {
+    background: #f59e0b;
+}
+
+.security-badge.danger {
+    background: #ef4444;
+}
+
+/* Location status enhancements */
+.location-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    background: #f8fafc;
+    margin-bottom: 12px;
+}
+
+.location-status i {
+    font-size: 1.2rem;
+}

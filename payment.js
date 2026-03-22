@@ -541,3 +541,286 @@ function initPaymentSystem() {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { PaymentProcessor, PaymentUIManager, PAYMENT_CONFIG, initPaymentSystem };
 }
+
+/**
+ * VPN Detection and Enforcement Module
+ * Prevents users from using VPN while selecting location
+ */
+
+class VPNDetector {
+    constructor() {
+        this.vpnDetected = false;
+        this.checkInProgress = false;
+    }
+
+    /**
+     * Detect VPN using multiple methods
+     * Returns promise with detection result
+     */
+    async detectVPN() {
+        this.checkInProgress = true;
+        
+        try {
+            // Method 1: WebRTC IP Leak Detection
+            const webrtcVPN = await this.detectWebRTCVPN();
+            
+            // Method 2: Timezone vs IP Location Mismatch
+            const timezoneVPN = await this.detectTimezoneMismatch();
+            
+            // Method 3: Check for common VPN/Proxy headers
+            const headersVPN = this.detectVPNHeaders();
+            
+            // Method 4: Measure latency (VPNs often add delay)
+            const latencyVPN = await this.detectLatencyAnomaly();
+            
+            this.vpnDetected = webrtcVPN || timezoneVPN || headersVPN || latencyVPN;
+            this.checkInProgress = false;
+            
+            return {
+                detected: this.vpnDetected,
+                methods: {
+                    webrtc: webrtcVPN,
+                    timezone: timezoneVPN,
+                    headers: headersVPN,
+                    latency: latencyVPN
+                }
+            };
+        } catch (error) {
+            console.error('VPN detection error:', error);
+            this.checkInProgress = false;
+            return { detected: false, error: error.message };
+        }
+    }
+
+    /**
+     * Detect VPN via WebRTC IP leaks
+     */
+    async detectWebRTCVPN() {
+        return new Promise((resolve) => {
+            // Check if WebRTC is available
+            if (!window.RTCPeerConnection) {
+                resolve(false);
+                return;
+            }
+
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            
+            let ips = new Set();
+            let timeoutId = setTimeout(() => {
+                pc.close();
+                resolve(false);
+            }, 3000);
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    const candidate = event.candidate.candidate;
+                    // Look for IP addresses
+                    const ipRegex = /([0-9]{1,3}\.){3}[0-9]{1,3}/;
+                    const match = candidate.match(ipRegex);
+                    if (match && !match[0].startsWith('192.168.') && !match[0].startsWith('10.')) {
+                        ips.add(match[0]);
+                    }
+                } else {
+                    clearTimeout(timeoutId);
+                    pc.close();
+                    // If we found a public IP that differs from the expected one
+                    // Multiple IPs often indicate VPN
+                    resolve(ips.size > 1);
+                }
+            };
+            
+            pc.createDataChannel('vpnDetection');
+            pc.createOffer()
+                .then(offer => pc.setLocalDescription(offer))
+                .catch(() => {
+                    clearTimeout(timeoutId);
+                    pc.close();
+                    resolve(false);
+                });
+        });
+    }
+
+    /**
+     * Detect VPN by checking timezone vs IP location mismatch
+     */
+    async detectTimezoneMismatch() {
+        try {
+            // Get timezone offset in hours
+            const timezoneOffset = new Date().getTimezoneOffset() / 60;
+            
+            // Fetch approximate location from IP (using free API)
+            const response = await fetch('https://ipapi.co/json/');
+            const data = await response.json();
+            
+            if (data && data.timezone) {
+                // Get timezone offset from IP location
+                const ipTimezone = data.utc_offset;
+                const ipOffsetMatch = ipTimezone.match(/[+-]\d+/);
+                
+                if (ipOffsetMatch) {
+                    const ipOffset = parseInt(ipOffsetMatch[0]) / 100;
+                    const difference = Math.abs(timezoneOffset + ipOffset);
+                    
+                    // If difference > 2 hours, likely using VPN
+                    return difference > 2;
+                }
+            }
+        } catch (error) {
+            console.log('Timezone detection failed:', error);
+        }
+        return false;
+    }
+
+    /**
+     * Check for common VPN/Proxy headers
+     */
+    detectVPNHeaders() {
+        // Check for CloudFlare headers that might indicate VPN/proxy
+        const headers = {
+            'cf-ipcountry': this.getHeader('CF-IPCountry'),
+            'x-forwarded-for': this.getHeader('X-Forwarded-For'),
+            'via': this.getHeader('Via')
+        };
+        
+        // If these headers exist and show proxy chains, likely VPN
+        return Object.values(headers).some(h => h && h.length > 0);
+    }
+
+    /**
+     * Detect VPN by measuring network latency anomalies
+     */
+    async detectLatencyAnomaly() {
+        try {
+            const startTime = Date.now();
+            await fetch('https://www.google.com/favicon.ico', {
+                mode: 'no-cors',
+                cache: 'no-cache'
+            });
+            const latency = Date.now() - startTime;
+            
+            // VPNs typically add 100-300ms latency
+            // High latency might indicate VPN
+            return latency > 200;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Helper to get header values (simulated since JS can't read all headers directly)
+     */
+    getHeader(headerName) {
+        // This is a simulation - actual header access requires server-side
+        // We'll use client-side hints instead
+        return null;
+    }
+
+    /**
+     * Show VPN warning and request user to disable
+     */
+    async enforceNoVPN() {
+        const detection = await this.detectVPN();
+        
+        if (detection.detected) {
+            this.showVPNWarning();
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Display VPN warning modal
+     */
+    showVPNWarning() {
+        // Check if modal already exists
+        if (document.getElementById('vpnWarningModal')) {
+            document.getElementById('vpnWarningModal').classList.remove('hidden');
+            return;
+        }
+        
+        // Create VPN warning modal
+        const modalHTML = `
+            <div id="vpnWarningModal" class="vpn-warning-modal">
+                <div class="vpn-warning-content">
+                    <div class="vpn-warning-icon">
+                        <i class="fas fa-shield-virus"></i>
+                    </div>
+                    <h2>⚠️ VPN Detected</h2>
+                    <p>For security and accurate location services, please disable your VPN or proxy before continuing.</p>
+                    <div class="vpn-warning-reasons">
+                        <h3>Why we need VPN disabled:</h3>
+                        <ul>
+                            <li><i class="fas fa-map-marker-alt"></i> Accurate location tracking</li>
+                            <li><i class="fas fa-lock"></i> Prevent fraudulent transactions</li>
+                            <li><i class="fas fa-truck"></i> Ensure correct delivery estimates</li>
+                            <li><i class="fas fa-shield-alt"></i> Protect your payment security</li>
+                        </ul>
+                    </div>
+                    <div class="vpn-warning-buttons">
+                        <button id="vpnRetryBtn" class="vpn-retry-btn">
+                            <i class="fas fa-sync-alt"></i> I've Disabled VPN, Retry
+                        </button>
+                        <button id="vpnCancelBtn" class="vpn-cancel-btn">
+                            <i class="fas fa-times"></i> Cancel Location
+                        </button>
+                    </div>
+                    <div class="vpn-instructions">
+                        <p><strong>How to disable VPN:</strong></p>
+                        <p>1. Close your VPN application<br>
+                        2. Disable proxy settings in your browser<br>
+                        3. Disable any privacy extensions that might mask your location</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Add event listeners
+        document.getElementById('vpnRetryBtn').addEventListener('click', async () => {
+            document.getElementById('vpnWarningModal').classList.add('hidden');
+            // Retry location detection
+            if (window.currentLocationCallback) {
+                await window.currentLocationCallback();
+            } else {
+                detectLocation();
+            }
+        });
+        
+        document.getElementById('vpnCancelBtn').addEventListener('click', () => {
+            document.getElementById('vpnWarningModal').classList.add('hidden');
+            const statusDiv = document.getElementById('locationStatus');
+            if (statusDiv) {
+                statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Location access cancelled. Please disable VPN and try again.';
+            }
+        });
+    }
+
+    /**
+     * Monitor for VPN changes periodically
+     */
+    startVPNMonitoring(callback) {
+        this.monitoringInterval = setInterval(async () => {
+            const detection = await this.detectVPN();
+            if (detection.detected !== this.vpnDetected) {
+                this.vpnDetected = detection.detected;
+                if (callback) callback(detection.detected);
+            }
+        }, 5000); // Check every 5 seconds
+    }
+
+    /**
+     * Stop VPN monitoring
+     */
+    stopVPNMonitoring() {
+        if (this.monitoringInterval) {
+            clearInterval(this.monitoringInterval);
+        }
+    }
+}
+
+// Initialize VPN detector
+const vpnDetector = new VPNDetector();

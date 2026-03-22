@@ -58,11 +58,28 @@ function switchLocationMethod(method) {
     }
 }
 
-// Auto Location Detection
-function detectLocation() {
+// Global variable to store location callback
+window.currentLocationCallback = null;
+
+// Updated Location Detection with VPN Check
+async function detectLocation() {
     const statusDiv = document.getElementById('locationStatus');
     const resultDiv = document.getElementById('autoLocationResult');
     
+    // First, check for VPN
+    statusDiv.innerHTML = '<i class="fas fa-shield-alt"></i> Checking security settings...';
+    
+    // Enforce no VPN
+    const vpnCheckPassed = await vpnDetector.enforceNoVPN();
+    
+    if (!vpnCheckPassed) {
+        // VPN detected - user will see warning modal
+        statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> VPN detected. Please disable VPN to continue.';
+        resultDiv.innerHTML = 'Location access blocked due to VPN. Please disable your VPN and try again.';
+        return;
+    }
+    
+    // Proceed with location detection
     if (!navigator.geolocation) {
         statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Geolocation not supported';
         return;
@@ -70,30 +87,92 @@ function detectLocation() {
     
     statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching your location...';
     
+    // Request permission with VPN warning
     navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
+            // Double-check VPN hasn't been enabled during location fetch
+            const vpnCheckAgain = await vpnDetector.detectVPN();
+            if (vpnCheckAgain.detected) {
+                statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> VPN detected during location fetch';
+                vpnDetector.showVPNWarning();
+                return;
+            }
+            
             const { latitude, longitude } = position.coords;
             currentLocation = { lat: latitude, lng: longitude };
             
-            // Reverse geocoding (simulated with coordinates display)
+            // Reverse geocoding with VPN check
             currentAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
             
-            statusDiv.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981"></i> Location detected!';
+            statusDiv.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981"></i> Location detected securely!';
             resultDiv.innerHTML = `
                 <strong>📍 Coordinates:</strong> ${currentAddress}<br>
-                <strong>Accuracy:</strong> ${position.coords.accuracy} meters
+                <strong>Accuracy:</strong> ${position.coords.accuracy} meters<br>
+                <strong>🔒 Security:</strong> VPN not detected ✓
             `;
             
             updateDeliveryAddress(currentAddress);
         },
         (error) => {
+            let errorMessage = '';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage = 'Location permission denied. Please enable location access.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage = 'Location information unavailable.';
+                    break;
+                case error.TIMEOUT:
+                    errorMessage = 'Location request timed out.';
+                    break;
+                default:
+                    errorMessage = error.message;
+            }
+            
             statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed to get location';
-            resultDiv.innerHTML = `Error: ${error.message}. Using default location.`;
+            resultDiv.innerHTML = `Error: ${errorMessage}. Using default location.`;
             currentAddress = "MG Road, Bengaluru (Default)";
             updateDeliveryAddress(currentAddress);
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
         }
     );
 }
+
+// Add VPN monitoring to detect if user enables VPN during session
+function startVPNMonitoring() {
+    vpnDetector.startVPNMonitoring((vpnDetected) => {
+        if (vpnDetected) {
+            showToast('⚠️ VPN detected! Please disable VPN for accurate location services.');
+            // Update location status to show warning
+            const statusDiv = document.getElementById('locationStatus');
+            if (statusDiv && document.getElementById('autoLocation').classList.contains('active')) {
+                statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> VPN detected. Location services paused.';
+            }
+        } else {
+            showToast('✓ VPN disabled. Location services restored.');
+            if (document.getElementById('autoLocation').classList.contains('active')) {
+                detectLocation();
+            }
+        }
+    });
+}
+
+// Initialize with VPN monitoring
+document.addEventListener('DOMContentLoaded', () => {
+    renderProducts();
+    loadCart();
+    setupEventListeners();
+    initLocationServices();
+    initPaymentSystem();
+    startVPNMonitoring(); // Start VPN monitoring
+    
+    // Store callback for retry
+    window.currentLocationCallback = detectLocation;
+});
 
 // Manual Address Save
 function saveManualAddress() {
